@@ -1,0 +1,11 @@
+{
+    "name": "maxog/php-app",
+    "description": "PHP Application",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "require": {}
+}
