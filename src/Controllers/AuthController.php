@@ -25,11 +25,23 @@ class AuthController {
             $email = trim($_POST['email'] ?? '');
             $password = $_POST['password'] ?? '';
 
-            // Здесь можно добавить валидацию данных
+            // Валидация
+            if (empty($username) || empty($email) || empty($password)) {
+                echo "All fields are required";
+                exit;
+            }
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                echo "Invalid email format";
+                exit;
+            }
+            if ($this->userModel->findByEmail($email)) {
+                echo "Email already exists";
+                exit;
+            }
 
+            // Хэширование происходит внутри create()
             if ($this->userModel->create($username, $email, $password)) {
-                // При успешной регистрации редирект на страницу входа
-                header('Location: /PHP-APP/public/create_article');
+                header('Location: /PHP-APP/public/login');
                 exit;
             } else {
                 echo "Registration failed";
@@ -52,7 +64,6 @@ class AuthController {
             if ($user) {
                 $_SESSION['user_id'] = $user['user_id'];
                 $_SESSION['role'] = $user['role'];
-                // При успешном входе редирект на главную страницу
                 header('Location: /PHP-APP/public/');
                 exit;
             } else {
