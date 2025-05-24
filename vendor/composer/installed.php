@@ -3,7 +3,7 @@
         'name' => 'maxog/php-app',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '2c281b780ce5ce67d3f51af62602f654f820edb6',
+        'reference' => 'e64dabed78309764bbe7af6e5cbb8c8f3792abb4',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -22,7 +22,7 @@
         'maxog/php-app' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '2c281b780ce5ce67d3f51af62602f654f820edb6',
+            'reference' => 'e64dabed78309764bbe7af6e5cbb8c8f3792abb4',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

@@ -1,5 +1,16 @@
 <?php
-require __DIR__ . '/../vendor/autoload.php';
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-require __DIR__ . '/../src/Routes/routes.php';
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use Dotenv\Dotenv;
+
+// Загрузка переменных окружения
+$dotenv = Dotenv::createImmutable(__DIR__ . '/..');
+$dotenv->load();
+
+// Инициализация маршрутизатора
+require_once __DIR__ . '/../src/Routes/Router.php';
 ?>
