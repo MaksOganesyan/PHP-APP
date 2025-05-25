@@ -21,6 +21,9 @@ class Router
         ],
         '~^(?:PHP-APP/public/)?article/?$~' => [ArticleController::class, 'list'], // Список статей
         '~^(?:PHP-APP/public/)?article/create/?$~' => [ArticleController::class, 'create'], // Создание статьи
+        '~^(?:PHP-APP/public/)?article/store/?$~' => [
+            'POST' => [ArticleController::class, 'store']
+        ],
         '~^(?:PHP-APP/public/)?article/edit/(\d+)/?$~' => [ArticleController::class, 'showEditForm'], // Редактирование статьи
         '~^(?:PHP-APP/public/)?article/delete/(\d+)/?$~' => [ArticleController::class, 'delete'], // Удаление статьи
         '~^(?:PHP-APP/public/)?logout/?$~' => [AuthController::class, 'logout'] // Выход

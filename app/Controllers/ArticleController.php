@@ -49,7 +49,37 @@ class ArticleController {
             exit;
         }
 
-        // TODO: Добавить сохранение статьи
+        // Проверяем, что запрос пришел методом POST
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: /PHP-APP/public/article/create');
+            exit;
+        }
+
+        // Валидация данных
+        $errors = [];
+        
+        if (empty($_POST['title'])) {
+            $errors[] = "Title is required";
+        }
+        if (empty($_POST['content'])) {
+            $errors[] = "Content is required";
+        }
+        if (empty($_POST['category_id'])) {
+            $errors[] = "Category is required";
+        }
+        if (empty($_POST['status'])) {
+            $errors[] = "Status is required";
+        }
+
+        // Если есть ошибки, возвращаемся на форму
+        if (!empty($errors)) {
+            $_SESSION['errors'] = $errors;
+            header('Location: /PHP-APP/public/article/create');
+            exit;
+        }
+
+        // TODO: Сохранение статьи в базу данных
+        // Пока просто перенаправляем на список статей
         header('Location: /PHP-APP/public/article');
         exit();
     }

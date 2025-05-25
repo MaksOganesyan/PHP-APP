@@ -50,9 +50,17 @@ try {
             </div>
         <?php else: ?>
             <h1 class="mb-4">Create a New Article</h1>
-            <?php if (isset($_GET['error'])): ?>
+            <?php 
+            if (isset($_SESSION['errors'])): 
+                $errors = $_SESSION['errors'];
+                unset($_SESSION['errors']);
+            ?>
                 <div class="alert alert-danger">
-                    <?php echo htmlspecialchars($_GET['error']); ?>
+                    <ul class="mb-0">
+                        <?php foreach ($errors as $error): ?>
+                            <li><?php echo htmlspecialchars($error); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
                 </div>
             <?php endif; ?>
             <form method="POST" action="/PHP-APP/public/article/store" class="needs-validation" novalidate>
