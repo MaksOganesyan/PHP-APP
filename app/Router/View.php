@@ -21,7 +21,17 @@ class View
  }
  public static function on_Article()
  {
-  include dirname(__DIR__,1) . '/Views/article.php';
+  include dirname(__DIR__,1) . '/Views/list_articles.php';
+  exit();
+ }
+ public static function on_CreateArticle()
+ {
+  include dirname(__DIR__,1) . '/Views/create_article.php';
+  exit();
+ }
+ public static function on_EditArticle($id)
+ {
+  include dirname(__DIR__,1) . '/Views/edit_article.php';
   exit();
  }
  

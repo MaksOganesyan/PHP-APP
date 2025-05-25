@@ -64,7 +64,7 @@ class AuthController {
             if ($user) {
                 $_SESSION['user_id'] = $user['user_id'];
                 $_SESSION['role'] = $user['role'];
-                header('Location: /PHP-APP/public/');
+                header('Location: /PHP-APP/public/article');
                 exit;
             } else {
                 echo "Invalid credentials";

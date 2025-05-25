@@ -7,10 +7,37 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/PHP-APP/public/">Blog</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/PHP-APP/public/article">Articles</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <?php if (isset($_SESSION['user_id'])): ?>
+                        <a href="/PHP-APP/public/logout" class="btn btn-outline-light me-2">Logout</a>
+                    <?php else: ?>
+                        <a href="/PHP-APP/public/login" class="btn btn-outline-light me-2">Login</a>
+                        <a href="/PHP-APP/public/register" class="btn btn-light">Register</a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </nav>
+
     <div class="container mt-5">
-        <h1>Articles</h1>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Articles</h1>
+            <?php if (isset($_SESSION['user_id'])): ?>
+                <a href="/PHP-APP/public/article/create" class="btn btn-success">Create New Article</a>
+            <?php endif; ?>
+        </div>
+
         <?php if (empty($articles)): ?>
-            <p>No articles found.</p>
+            <div class="alert alert-info">No articles found.</div>
         <?php else: ?>
             <div class="list-group">
                 <?php foreach ($articles as $article): ?>
@@ -37,9 +64,6 @@
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
-        <div class="mt-3">
-            <a href="/PHP-APP/public/" class="btn btn-primary">Back to Home</a>
-        </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

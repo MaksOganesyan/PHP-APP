@@ -2,15 +2,26 @@
 namespace app\Router;
 
 use app\Router\View;//файл с переходником на страницы
+use app\Controllers\AuthController;
 
 class Router
 {
     //### PATTERNS ROUTER PAGE ###
     private static $patterns = [
+        // GET routes
         '~^(?:PHP-APP/public/?)?$~' => [View::class, 'on_Main'],       // Главная страница
-        '~^(?:PHP-APP/public/)?login/?$~' => [View::class, 'on_Login'], // Страница логина
-        '~^(?:PHP-APP/public/)?register/?$~' => [View::class, 'on_Register'], // Страница регистрации
-        '~^(?:PHP-APP/public/)?article/?$~' => [View::class, 'on_Article'], // Страница статьи
+        '~^(?:PHP-APP/public/)?login/?$~' => [
+            'GET' => [AuthController::class, 'showLogin'],
+            'POST' => [AuthController::class, 'login']
+        ],
+        '~^(?:PHP-APP/public/)?register/?$~' => [
+            'GET' => [AuthController::class, 'showRegister'],
+            'POST' => [AuthController::class, 'register']
+        ],
+        '~^(?:PHP-APP/public/)?article/?$~' => [View::class, 'on_Article'], // Список статей
+        '~^(?:PHP-APP/public/)?article/create/?$~' => [View::class, 'on_CreateArticle'], // Создание статьи
+        '~^(?:PHP-APP/public/)?article/edit/(\d+)/?$~' => [View::class, 'on_EditArticle'], // Редактирование статьи
+        '~^(?:PHP-APP/public/)?logout/?$~' => [AuthController::class, 'logout'] // Выход
     ];
     public function onRoute()
     {
@@ -33,15 +44,25 @@ class Router
         error_log("Текущий маршрут после обработки: '" . $route . "'");
         
         $findRoute = false;
+        $method = $_SERVER['REQUEST_METHOD'];
 
-        foreach (self::$patterns as $pattern => $controllerAndAction) {
+        foreach (self::$patterns as $pattern => $handlers) {
             error_log("Проверяем паттерн: " . $pattern . " для маршрута: " . $route);
             if (preg_match($pattern, $route, $matches)) {
                 error_log("Паттерн совпал!");
                 $findRoute = true;
                 unset($matches[0]);
-                $action = $controllerAndAction[1];
-                $controller = new $controllerAndAction[0];
+
+                // Проверяем, есть ли обработчик для данного метода
+                if (is_array($handlers) && isset($handlers[$method])) {
+                    $handler = $handlers[$method];
+                } else {
+                    // Если handlers не массив, значит это простой GET-маршрут
+                    $handler = $handlers;
+                }
+
+                $controller = new $handler[0];
+                $action = $handler[1];
                 $controller->$action(...$matches);
                 break;
             }
