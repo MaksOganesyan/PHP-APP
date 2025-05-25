@@ -3,6 +3,7 @@ namespace app\Router;
 
 use app\Router\View;//файл с переходником на страницы
 use app\Controllers\AuthController;
+use app\Controllers\ArticleController;
 
 class Router
 {
@@ -18,9 +19,10 @@ class Router
             'GET' => [AuthController::class, 'showRegister'],
             'POST' => [AuthController::class, 'register']
         ],
-        '~^(?:PHP-APP/public/)?article/?$~' => [View::class, 'on_Article'], // Список статей
-        '~^(?:PHP-APP/public/)?article/create/?$~' => [View::class, 'on_CreateArticle'], // Создание статьи
-        '~^(?:PHP-APP/public/)?article/edit/(\d+)/?$~' => [View::class, 'on_EditArticle'], // Редактирование статьи
+        '~^(?:PHP-APP/public/)?article/?$~' => [ArticleController::class, 'list'], // Список статей
+        '~^(?:PHP-APP/public/)?article/create/?$~' => [ArticleController::class, 'create'], // Создание статьи
+        '~^(?:PHP-APP/public/)?article/edit/(\d+)/?$~' => [ArticleController::class, 'showEditForm'], // Редактирование статьи
+        '~^(?:PHP-APP/public/)?article/delete/(\d+)/?$~' => [ArticleController::class, 'delete'], // Удаление статьи
         '~^(?:PHP-APP/public/)?logout/?$~' => [AuthController::class, 'logout'] // Выход
     ];
     public function onRoute()
