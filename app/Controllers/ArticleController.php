@@ -78,10 +78,32 @@ class ArticleController {
             exit;
         }
 
-        // TODO: Сохранение статьи в базу данных
-        // Пока просто перенаправляем на список статей
-        header('Location: /PHP-APP/public/article');
-        exit();
+        try {
+            $articleModel = new \app\Models\Article();
+            
+            $articleData = [
+                'title' => $_POST['title'],
+                'content' => $_POST['content'],
+                'category_id' => $_POST['category_id'],
+                'status' => $_POST['status']
+            ];
+
+            $result = $articleModel->create($articleData);
+
+            if ($result) {
+                header('Location: /PHP-APP/public/article');
+                exit();
+            } else {
+                $_SESSION['errors'] = ['Failed to create article. Please try again.'];
+                header('Location: /PHP-APP/public/article/create');
+                exit();
+            }
+        } catch (\Exception $e) {
+            error_log("Error in ArticleController::store: " . $e->getMessage());
+            $_SESSION['errors'] = ['An error occurred while creating the article.'];
+            header('Location: /PHP-APP/public/article/create');
+            exit();
+        }
     }
 
     public function showEditForm($id) {
