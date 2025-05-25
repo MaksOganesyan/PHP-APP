@@ -6,11 +6,12 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
-    'Symfony\\Polyfill\\Php80\\' => array($vendorDir . '/symfony/polyfill-php80'),
+    'app\\' => array($baseDir . '/app'),
+    'Twig\\' => array($vendorDir . '/twig/twig/src'),
     'Symfony\\Polyfill\\Mbstring\\' => array($vendorDir . '/symfony/polyfill-mbstring'),
     'Symfony\\Polyfill\\Ctype\\' => array($vendorDir . '/symfony/polyfill-ctype'),
-    'PhpOption\\' => array($vendorDir . '/phpoption/phpoption/src/PhpOption'),
-    'GrahamCampbell\\ResultType\\' => array($vendorDir . '/graham-campbell/result-type/src'),
-    'Dotenv\\' => array($vendorDir . '/vlucas/phpdotenv/src'),
-    'App\\' => array($baseDir . '/src'),
+    'Psr\\Log\\' => array($vendorDir . '/psr/log/src'),
+    'PhpParser\\' => array($vendorDir . '/nikic/php-parser/lib/PhpParser'),
+    'Monolog\\' => array($vendorDir . '/monolog/monolog/src/Monolog'),
+    'DeepCopy\\' => array($vendorDir . '/myclabs/deep-copy/src/DeepCopy'),
 );
