@@ -14,7 +14,7 @@ class ArticleController {
             $articleModel = new \app\Models\Article();
             $articles = $articleModel->findAll();
             
-            // Подключаем представление
+            //! Подключение представления
             require __DIR__ . '/../Views/list_articles.php';
         } catch (\Exception $e) {
             error_log("Error in ArticleController::list: " . $e->getMessage());
@@ -37,13 +37,13 @@ class ArticleController {
             exit;
         }
 
-        // Проверяем, что запрос пришел методом POST
+        // Проверка на тип (POST)
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Location: /PHP-APP/public/article/create');
             exit;
         }
 
-        // Валидация данных
+        //* Валидация данных
         $errors = [];
         
         if (empty($_POST['title'])) {
@@ -59,7 +59,7 @@ class ArticleController {
             $errors[] = "Status is required";
         }
 
-        // Если есть ошибки, возвращаемся на форму
+        //! Проверка на ошибки в таком случае вернусь на ошибку
         if (!empty($errors)) {
             $_SESSION['errors'] = $errors;
             header('Location: /PHP-APP/public/article/create');
@@ -110,7 +110,7 @@ class ArticleController {
                 exit;
             }
 
-            // Проверяем, является ли текущий пользователь автором статьи
+            
             if ($article['author_id'] !== $_SESSION['user_id']) {
                 $_SESSION['errors'] = ['You are not authorized to edit this article'];
                 header('Location: /PHP-APP/public/article');
@@ -132,7 +132,7 @@ class ArticleController {
             exit;
         }
 
-        // Проверяем, что запрос пришел методом POST
+       
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Location: /PHP-APP/public/article');
             exit;
@@ -141,7 +141,7 @@ class ArticleController {
         try {
             $articleModel = new \app\Models\Article();
             
-            // Проверяем существование статьи и права доступа
+           
             $article = $articleModel->findById($id);
             error_log("Article data from DB: " . print_r($article, true));
             
@@ -157,7 +157,7 @@ class ArticleController {
                 exit;
             }
 
-            // Валидация данных
+            
             $errors = [];
             if (empty($_POST['title'])) {
                 $errors[] = "Title is required";
@@ -178,7 +178,7 @@ class ArticleController {
                 exit;
             }
 
-            // Подготавливаем данные для обновления
+            
             $articleData = [
                 'article_id' => $id,
                 'title' => $_POST['title'],
@@ -191,7 +191,7 @@ class ArticleController {
             error_log("Update data: " . print_r($articleData, true));
             error_log("Session user_id: " . $_SESSION['user_id']);
 
-            // Обновляем статью
+            // Обновляю статью
             $result = $articleModel->update($articleData);
             error_log("Update result: " . ($result ? 'true' : 'false'));
 
@@ -220,7 +220,7 @@ class ArticleController {
         try {
             $articleModel = new \app\Models\Article();
             
-            // Проверяем существование статьи и права доступа
+            // Проверка существования статьи и права доступа
             $article = $articleModel->findById($id);
             
             if (!$article) {
@@ -235,7 +235,7 @@ class ArticleController {
                 exit;
             }
 
-            // Удаляем статью
+            
             if ($articleModel->delete($id, $_SESSION['user_id'])) {
                 $_SESSION['success'] = 'Article successfully deleted';
             } else {

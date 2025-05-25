@@ -13,19 +13,16 @@ class AuthController {
         }
     }
 
-    // !Страница регистрации
     public function showRegister() {
         require __DIR__ . '/../Views/register.php';
     }
 
-    //! Обработка регистрации
     public function register() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $username = trim($_POST['username'] ?? '');
             $email = trim($_POST['email'] ?? '');
             $password = $_POST['password'] ?? '';
 
-            //*Валидация
             if (empty($username) || empty($email) || empty($password)) {
                 echo "All fields are required";
                 exit;
@@ -39,7 +36,6 @@ class AuthController {
                 exit;
             }
 
-            //! Хэширование 
             if ($this->userModel->create($username, $email, $password)) {
                 header('Location: /PHP-APP/public/login');
                 exit;
@@ -49,12 +45,10 @@ class AuthController {
         }
     }
 
-    //*Перенаправление на страницу входа
     public function showLogin() {
         require __DIR__ . '/../Views/login.php';
     }
 
-    //?Обработка входа
     public function login() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $email = trim($_POST['email'] ?? '');
@@ -87,7 +81,6 @@ class AuthController {
         }
     }
 
-    //* Выход из системы
     public function logout() {
         session_destroy();
         header('Location: /PHP-APP/public/');

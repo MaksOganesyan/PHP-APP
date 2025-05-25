@@ -1,7 +1,7 @@
 <?php
 namespace app\Router;
 
-use app\Router\View;//файл с переходником на страницы
+use app\Router\View;
 use app\Controllers\AuthController;
 use app\Controllers\ArticleController;
 
@@ -84,13 +84,11 @@ class Router
             exit();
         }
     }
-    public static function onAutoloadRegister(
-    ): void {
+    public static function onAutoloadRegister(): void {
         spl_autoload_register(function ($className) {
-
             $filePath = dirname(__DIR__) . '/' . str_replace(['\\', 'app\Models'], ['/', ''], $className) . '.php';
 
-            if (file_exists($filePath)) {//have't file
+            if (file_exists($filePath)) {
                 require_once $filePath;
             } else {
                error_log("Ошибка загрузки класса '$className'. Файл не существует по пути: $filePath");
@@ -104,7 +102,5 @@ class Router
         include dirname(__DIR__, 1) . '/Views/404.php';
         exit();
     }
-
-
 }
 ?>

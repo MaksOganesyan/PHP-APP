@@ -19,10 +19,7 @@ class User {
 
         $success = $stmt->execute([$username, $email, $passwordHash, $role]);
         if (!$success) {
-            echo "Create failed. Error: " . implode(", ", $stmt->errorInfo()) . "\n";
-        } else {
-            echo "User created. Last ID: " . $this->pdo->lastInsertId() . "\n";
-            echo "Saved hash: " . $passwordHash . "\n";
+            error_log("Create failed. Error: " . implode(", ", $stmt->errorInfo()));
         }
         return $success;
     }
@@ -33,9 +30,7 @@ class User {
         $user = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         if (!$user) {
-            echo "No user found for email: $email\n";
-        } else {
-            echo "User found: " . print_r($user, true) . "\n";
+            error_log("No user found for email: $email");
         }
         return $user;
     }

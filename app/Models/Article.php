@@ -35,7 +35,6 @@ class Article {
 
     public function findAll() {
         try {
-            // Получаем статьи с основной информацией
             $sql = "SELECT a.*, u.username, c.name as category_name 
                    FROM Articles a 
                    JOIN Users u ON a.author_id = u.user_id 
@@ -45,7 +44,6 @@ class Article {
             $stmt = $this->pdo->query($sql);
             $articles = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-            // Получаем теги для каждой статьи
             foreach ($articles as &$article) {
                 $sql = "SELECT t.name 
                        FROM Tags t 
@@ -68,7 +66,6 @@ class Article {
 
     public function findById($id) {
         try {
-            // Получаем основную информацию о статье
             $sql = "SELECT a.*, u.username, c.name as category_name 
                    FROM Articles a 
                    JOIN Users u ON a.author_id = u.user_id 
@@ -80,7 +77,6 @@ class Article {
             $article = $stmt->fetch(\PDO::FETCH_ASSOC);
 
             if ($article) {
-                // Получаем теги для статьи
                 $sql = "SELECT t.name 
                        FROM Tags t 
                        JOIN Article_Tags at ON t.tag_id = at.tag_id 
@@ -133,12 +129,9 @@ class Article {
             
             error_log("Rows affected: " . $stmt->rowCount());
 
-            // Обновляем теги, если они есть
             if (isset($data['tags'])) {
-                // Удаляем старые связи
                 $this->deleteArticleTags($data['article_id']);
                 
-                // Добавляем новые теги
                 if (!empty($data['tags'])) {
                     $this->saveTags($data['article_id'], $data['tags']);
                 }
@@ -161,15 +154,12 @@ class Article {
     }
 
     private function saveTags($articleId, $tagString) {
-        // Разбиваем строку тегов и очищаем их
         $tagNames = array_map('trim', explode(',', $tagString));
-        $tagNames = array_filter($tagNames); // Удаляем пустые значения
+        $tagNames = array_filter($tagNames);
 
         foreach ($tagNames as $tagName) {
-            // Создаем или получаем существующий тег
             $tagId = $this->getOrCreateTag($tagName);
             
-            // Добавляем связь статьи с тегом
             $sql = "INSERT IGNORE INTO Article_Tags (article_id, tag_id) VALUES (?, ?)";
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$articleId, $tagId]);
@@ -177,7 +167,6 @@ class Article {
     }
 
     private function getOrCreateTag($tagName) {
-        // Пытаемся найти существующий тег
         $sql = "SELECT tag_id FROM Tags WHERE name = ?";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$tagName]);
@@ -187,7 +176,6 @@ class Article {
             return $result['tag_id'];
         }
 
-        // Если тег не найден, создаем новый
         $sql = "INSERT INTO Tags (name, slug) VALUES (?, ?)";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$tagName, $this->createSlug($tagName)]);
@@ -196,7 +184,6 @@ class Article {
     }
 
     private function createSlug($text) {
-        // Транслитерация и создание slug
         $text = mb_strtolower($text);
         $text = preg_replace('/[^a-z0-9\-]/', '-', $text);
         $text = preg_replace('/-+/', '-', $text);
@@ -207,7 +194,6 @@ class Article {
         try {
             $this->pdo->beginTransaction();
 
-            // Проверяем, существует ли статья и принадлежит ли она пользователю
             $sql = "SELECT article_id FROM Articles WHERE article_id = ? AND author_id = ?";
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$articleId, $userId]);
@@ -217,12 +203,10 @@ class Article {
                 return false;
             }
 
-            // Удаляем связи с тегами
             $sql = "DELETE FROM Article_Tags WHERE article_id = ?";
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$articleId]);
 
-            // Удаляем саму статью
             $sql = "DELETE FROM Articles WHERE article_id = ? AND author_id = ?";
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$articleId, $userId]);
