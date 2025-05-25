@@ -1,9 +1,11 @@
 RewriteEngine On
-RewriteBase /
+RewriteBase /PHP-APP/
 
-# Если файл или директория существуют, используем их напрямую
+# Если это не файл и не директория
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
-# Внутренне переписываем запрос на public/index.php с параметром route
-RewriteRule ^(.*)$ index.php?route=$1 [QSA,L]
+# Если запрос не начинается с /public/
+RewriteCond %{REQUEST_URI} !^/PHP-APP/public/
+# Перенаправляем в public/
+RewriteRule ^(.*)$ public/$1 [L,QSA]

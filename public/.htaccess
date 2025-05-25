@@ -1,0 +1,9 @@
+RewriteEngine On
+RewriteBase /PHP-APP/public/
+
+# Если запрос не к файлу и не к директории
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Перенаправляем все запросы на index.php
+RewriteRule . index.php [L,QSA]
