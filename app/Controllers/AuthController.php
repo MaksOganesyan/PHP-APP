@@ -60,14 +60,29 @@ class AuthController {
             $email = trim($_POST['email'] ?? '');
             $password = $_POST['password'] ?? '';
 
+            if (empty($email) || empty($password)) {
+                $_SESSION['errors'] = ['Email and password are required'];
+                header('Location: /PHP-APP/public/login');
+                exit;
+            }
+
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $_SESSION['errors'] = ['Invalid email format'];
+                header('Location: /PHP-APP/public/login');
+                exit;
+            }
+
             $user = $this->userModel->verifyPassword($email, $password);
             if ($user) {
                 $_SESSION['user_id'] = $user['user_id'];
+                $_SESSION['username'] = $user['username'];
                 $_SESSION['role'] = $user['role'];
                 header('Location: /PHP-APP/public/article');
                 exit;
             } else {
-                echo "Invalid credentials";
+                $_SESSION['errors'] = ['Invalid credentials'];
+                header('Location: /PHP-APP/public/login');
+                exit;
             }
         }
     }

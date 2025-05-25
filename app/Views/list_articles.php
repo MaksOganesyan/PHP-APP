@@ -36,8 +36,34 @@
             <?php endif; ?>
         </div>
 
+        <?php if (isset($_SESSION['errors'])): ?>
+            <div class="alert alert-danger">
+                <?php 
+                foreach ($_SESSION['errors'] as $error) {
+                    echo htmlspecialchars($error) . '<br>';
+                }
+                unset($_SESSION['errors']);
+                ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['success'])): ?>
+            <div class="alert alert-success">
+                <?php 
+                echo htmlspecialchars($_SESSION['success']);
+                unset($_SESSION['success']);
+                ?>
+            </div>
+        <?php endif; ?>
+
         <?php if (empty($articles)): ?>
-            <div class="alert alert-info">No articles found.</div>
+            <div class="alert alert-info">
+                <?php if (isset($_SESSION['user_id'])): ?>
+                    Записи ещё не созданы. <a href="/PHP-APP/public/article/create" class="alert-link">Создать первую запись</a>?
+                <?php else: ?>
+                    Записи ещё не созданы.
+                <?php endif; ?>
+            </div>
         <?php else: ?>
             <div class="list-group">
                 <?php foreach ($articles as $article): ?>
@@ -55,9 +81,9 @@
                         <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] === $article['author_id']): ?>
                             <div class="btn-group">
                                 <a href="/PHP-APP/public/article/edit/<?php echo $article['article_id']; ?>" class="btn btn-sm btn-outline-primary">Edit</a>
-                                <a href="/PHP-APP/public/article/delete/<?php echo $article['article_id']; ?>" 
-                                   onclick="return confirm('Are you sure?')" 
-                                   class="btn btn-sm btn-outline-danger">Delete</a>
+                                <form action="/PHP-APP/public/article/delete/<?php echo $article['article_id']; ?>" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this article?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
                             </div>
                         <?php endif; ?>
                     </div>

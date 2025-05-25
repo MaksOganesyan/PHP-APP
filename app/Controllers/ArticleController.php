@@ -10,29 +10,17 @@ class ArticleController {
     }
 
     public function list() {
-        if (!isset($articles)) {
-            // Временные тестовые данные
-            $articles = [
-                [
-                    'article_id' => 1,
-                    'title' => 'Test Article',
-                    'content' => 'Test Content',
-                    'username' => 'Test User',
-                    'category_name' => 'Test Category',
-                    'status' => 'published',
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'published_at' => date('Y-m-d H:i:s'),
-                    'author_id' => isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 1,
-                    'tags' => ['test']
-                ]
-            ];
+        try {
+            $articleModel = new \app\Models\Article();
+            $articles = $articleModel->findAll();
+            
+            // Подключаем представление
+            require __DIR__ . '/../Views/list_articles.php';
+        } catch (\Exception $e) {
+            error_log("Error in ArticleController::list: " . $e->getMessage());
+            $articles = [];
+            require __DIR__ . '/../Views/list_articles.php';
         }
-        
-        // Делаем переменную доступной в представлении
-        extract(['articles' => $articles]);
-        
-        // Подключаем представление
-        require __DIR__ . '/../Views/list_articles.php';
     }
 
     public function create() {
@@ -111,7 +99,31 @@ class ArticleController {
             header('Location: /PHP-APP/public/login');
             exit;
         }
-        require __DIR__ . '/../Views/edit_article.php';
+
+        try {
+            $articleModel = new \app\Models\Article();
+            $article = $articleModel->findById($id);
+
+            if (!$article) {
+                $_SESSION['errors'] = ['Article not found'];
+                header('Location: /PHP-APP/public/article');
+                exit;
+            }
+
+            // Проверяем, является ли текущий пользователь автором статьи
+            if ($article['author_id'] !== $_SESSION['user_id']) {
+                $_SESSION['errors'] = ['You are not authorized to edit this article'];
+                header('Location: /PHP-APP/public/article');
+                exit;
+            }
+
+            require __DIR__ . '/../Views/edit_article.php';
+        } catch (\Exception $e) {
+            error_log("Error in ArticleController::showEditForm: " . $e->getMessage());
+            $_SESSION['errors'] = ['An error occurred while loading the article'];
+            header('Location: /PHP-APP/public/article');
+            exit;
+        }
     }
 
     public function update($id) {
@@ -119,9 +131,84 @@ class ArticleController {
             header('Location: /PHP-APP/public/login');
             exit;
         }
-        // TODO: Добавить обновление статьи
-        header('Location: /PHP-APP/public/article');
-        exit();
+
+        // Проверяем, что запрос пришел методом POST
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: /PHP-APP/public/article');
+            exit;
+        }
+
+        try {
+            $articleModel = new \app\Models\Article();
+            
+            // Проверяем существование статьи и права доступа
+            $article = $articleModel->findById($id);
+            error_log("Article data from DB: " . print_r($article, true));
+            
+            if (!$article) {
+                $_SESSION['errors'] = ['Article not found'];
+                header('Location: /PHP-APP/public/article');
+                exit;
+            }
+
+            if ($article['author_id'] !== $_SESSION['user_id']) {
+                $_SESSION['errors'] = ['You are not authorized to edit this article'];
+                header('Location: /PHP-APP/public/article');
+                exit;
+            }
+
+            // Валидация данных
+            $errors = [];
+            if (empty($_POST['title'])) {
+                $errors[] = "Title is required";
+            }
+            if (empty($_POST['content'])) {
+                $errors[] = "Content is required";
+            }
+            if (empty($_POST['category_id'])) {
+                $errors[] = "Category is required";
+            }
+            if (empty($_POST['status'])) {
+                $errors[] = "Status is required";
+            }
+
+            if (!empty($errors)) {
+                $_SESSION['errors'] = $errors;
+                header("Location: /PHP-APP/public/article/edit/{$id}");
+                exit;
+            }
+
+            // Подготавливаем данные для обновления
+            $articleData = [
+                'article_id' => $id,
+                'title' => $_POST['title'],
+                'content' => $_POST['content'],
+                'category_id' => $_POST['category_id'],
+                'status' => $_POST['status'],
+                'tags' => $_POST['tags']
+            ];
+
+            error_log("Update data: " . print_r($articleData, true));
+            error_log("Session user_id: " . $_SESSION['user_id']);
+
+            // Обновляем статью
+            $result = $articleModel->update($articleData);
+            error_log("Update result: " . ($result ? 'true' : 'false'));
+
+            if ($result) {
+                header('Location: /PHP-APP/public/article');
+                exit;
+            } else {
+                $_SESSION['errors'] = ['Failed to update article'];
+                header("Location: /PHP-APP/public/article/edit/{$id}");
+                exit;
+            }
+        } catch (\Exception $e) {
+            error_log("Error in ArticleController::update: " . $e->getMessage());
+            $_SESSION['errors'] = ['An error occurred while updating the article'];
+            header("Location: /PHP-APP/public/article/edit/{$id}");
+            exit;
+        }
     }
 
     public function delete($id) {
@@ -129,9 +216,39 @@ class ArticleController {
             header('Location: /PHP-APP/public/login');
             exit;
         }
-        // TODO: Добавить удаление статьи
+
+        try {
+            $articleModel = new \app\Models\Article();
+            
+            // Проверяем существование статьи и права доступа
+            $article = $articleModel->findById($id);
+            
+            if (!$article) {
+                $_SESSION['errors'] = ['Article not found'];
+                header('Location: /PHP-APP/public/article');
+                exit;
+            }
+
+            if ($article['author_id'] !== $_SESSION['user_id']) {
+                $_SESSION['errors'] = ['You are not authorized to delete this article'];
+                header('Location: /PHP-APP/public/article');
+                exit;
+            }
+
+            // Удаляем статью
+            if ($articleModel->delete($id, $_SESSION['user_id'])) {
+                $_SESSION['success'] = 'Article successfully deleted';
+            } else {
+                $_SESSION['errors'] = ['Failed to delete article'];
+            }
+
+        } catch (\Exception $e) {
+            error_log("Error in ArticleController::delete: " . $e->getMessage());
+            $_SESSION['errors'] = ['An error occurred while deleting the article'];
+        }
+
         header('Location: /PHP-APP/public/article');
-        exit();
+        exit;
     }
 }
 ?>

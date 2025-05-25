@@ -25,7 +25,12 @@ class Router
             'POST' => [ArticleController::class, 'store']
         ],
         '~^(?:PHP-APP/public/)?article/edit/(\d+)/?$~' => [ArticleController::class, 'showEditForm'], // Редактирование статьи
-        '~^(?:PHP-APP/public/)?article/delete/(\d+)/?$~' => [ArticleController::class, 'delete'], // Удаление статьи
+        '~^(?:PHP-APP/public/)?article/update/(\d+)/?$~' => [
+            'POST' => [ArticleController::class, 'update']
+        ],
+        '~^(?:PHP-APP/public/)?article/delete/(\d+)/?$~' => [
+            'POST' => [ArticleController::class, 'delete']
+        ],
         '~^(?:PHP-APP/public/)?logout/?$~' => [AuthController::class, 'logout'] // Выход
     ];
     public function onRoute()

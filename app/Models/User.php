@@ -47,20 +47,27 @@ class User {
     }
 
     public function verifyPassword($email, $password) {
-        $user = $this->findByEmail($email);
-        if ($user) {
-            echo "Verifying password for user: " . $user['email'] . "\n";
-            echo "Stored hash: " . $user['password_hash'] . "\n";
-            if (password_verify($password, $user['password_hash'])) {
-                echo "Password verified successfully\n";
-                return $user;
-            } else {
-                echo "Password verification failed\n";
+        try {
+            $stmt = $this->pdo->prepare("SELECT * FROM Users WHERE email = ?");
+            $stmt->execute([$email]);
+            $user = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+            if (!$user) {
+                error_log("Login attempt: No user found for email: $email");
+                return false;
             }
-        } else {
-            echo "No user to verify password\n";
+
+            if (password_verify($password, $user['password_hash'])) {
+                error_log("Login successful for user: " . $user['username']);
+                return $user;
+            }
+
+            error_log("Login attempt: Invalid password for email: $email");
+            return false;
+        } catch (\PDOException $e) {
+            error_log("Database error during login: " . $e->getMessage());
+            return false;
         }
-        return false;
     }
 }
 ?>
