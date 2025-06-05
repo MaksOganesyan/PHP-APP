@@ -1,223 +1,283 @@
 <?php
 namespace app\Models;
+
 use app\Config\Database;
+use PDO;
 
-class Article {
-    private $pdo;
+class Article extends ActiveRecordEntity
+{
+    protected $article_id;
+    public $title;
+    public $slug;
+    public $content;
+    public $author_id;
+    protected $category_id;
+    public $status;
+    public $published_at;
+    public $created_at;
+    protected $username;
+    protected $category_name;
+    protected $tags = [];
 
-    public function __construct() {
-        $this->pdo = Database::getInstance();
+    protected static function getTableName(): string
+    {
+        return 'Articles';
     }
 
-    public function create($data) {
-        try {
-            $sql = "INSERT INTO Articles (title, content, author_id, category_id, status, published_at) 
-                    VALUES (:title, :content, :author_id, :category_id, :status, :published_at)";
-            
-            $published_at = $data['status'] === 'published' ? date('Y-m-d H:i:s') : null;
-            
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([
-                ':title' => $data['title'],
-                ':content' => $data['content'],
-                ':author_id' => $_SESSION['user_id'],
-                ':category_id' => $data['category_id'],
-                ':status' => $data['status'],
-                ':published_at' => $published_at
-            ]);
+    protected static function getPrimaryKeyName(): string
+    {
+        return 'article_id';
+    }
 
-            return $this->pdo->lastInsertId();
-        } catch (\PDOException $e) {
-            error_log("Error creating article: " . $e->getMessage());
-            return false;
+    public function delete(): void
+    {
+        $db = Database::getInstance();
+        try {
+            $db->beginTransaction();
+
+            // Сначала удаляем связи с тегами
+            $deleteTagsStmt = $db->prepare('DELETE FROM Article_Tags WHERE article_id = :article_id');
+            $deleteTagsStmt->execute([':article_id' => $this->article_id]);
+            error_log("Deleted article tags for article ID: " . $this->article_id);
+
+            // Затем удаляем саму статью
+            $sql = 'DELETE FROM `' . static::getTableName() . '` WHERE article_id = :id';
+            $stmt = $db->prepare($sql);
+            $stmt->bindValue(':id', $this->article_id, PDO::PARAM_INT);
+
+            if (!$stmt->execute()) {
+                throw new \PDOException("Delete query failed");
+            }
+
+            $db->commit();
+            error_log("Article deleted successfully, ID: " . $this->article_id);
+            
+            $this->article_id = null;
+        } catch (\Exception $e) {
+            $db->rollBack();
+            error_log("Error deleting article: " . $e->getMessage());
+            throw $e;
         }
     }
 
-    public function findAll() {
-        try {
-            $sql = "SELECT a.*, u.username, c.name as category_name 
-                   FROM Articles a 
-                   JOIN Users u ON a.author_id = u.user_id 
-                   JOIN Categories c ON a.category_id = c.category_id 
-                   ORDER BY a.created_at DESC";
-            
-            $stmt = $this->pdo->query($sql);
-            $articles = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-
-            foreach ($articles as &$article) {
-                $sql = "SELECT t.name 
-                       FROM Tags t 
-                       JOIN Article_Tags at ON t.tag_id = at.tag_id 
-                       WHERE at.article_id = ?";
-                
-                $stmt = $this->pdo->prepare($sql);
-                $stmt->execute([$article['article_id']]);
-                $tags = $stmt->fetchAll(\PDO::FETCH_COLUMN);
-                
-                $article['tags'] = $tags;
-            }
-
-            return $articles;
-        } catch (\PDOException $e) {
-            error_log("Error fetching articles: " . $e->getMessage());
-            return [];
-        }
+    public function getTitle(): string
+    {
+        return $this->title;
     }
 
-    public function findById($id) {
-        try {
-            $sql = "SELECT a.*, u.username, c.name as category_name 
-                   FROM Articles a 
-                   JOIN Users u ON a.author_id = u.user_id 
-                   JOIN Categories c ON a.category_id = c.category_id 
-                   WHERE a.article_id = ?";
-            
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([$id]);
-            $article = $stmt->fetch(\PDO::FETCH_ASSOC);
+    public function getSlug(): string
+    {
+        return $this->slug;
+    }
 
-            if ($article) {
-                $sql = "SELECT t.name 
-                       FROM Tags t 
-                       JOIN Article_Tags at ON t.tag_id = at.tag_id 
-                       WHERE at.article_id = ?";
-                
-                $stmt = $this->pdo->prepare($sql);
-                $stmt->execute([$id]);
-                $tags = $stmt->fetchAll(\PDO::FETCH_COLUMN);
-                
-                $article['tags'] = $tags;
-            }
+    public function getContent(): string
+    {
+        return $this->content;
+    }
 
-            return $article;
-        } catch (\PDOException $e) {
-            error_log("Error fetching article by ID: " . $e->getMessage());
+    public function getAuthorId(): int
+    {
+        return $this->author_id;
+    }
+
+    public function getCategoryId(): int
+    {
+        error_log("Getting category_id: " . print_r($this->category_id, true));
+        return $this->category_id;
+    }
+
+    public function getStatus(): string
+    {
+        return $this->status;
+    }
+
+    public function getPublishedAt(): ?string
+    {
+        return $this->published_at;
+    }
+
+    public function getCreatedAt(): ?string
+    {
+        return $this->created_at;
+    }
+
+    public function setAuthorId(int $authorId): void
+    {
+        $this->author_id = $authorId;
+    }
+
+    public function setCategoryId(int $categoryId): void
+    {
+        error_log("Setting category_id to: " . $categoryId);
+        $this->category_id = $categoryId;
+    }
+
+    public function generateSlug(string $string): string
+    {
+        $slug = strtolower(trim($string));
+        $slug = preg_replace('/[^a-z0-9-]/', '-', $slug);
+        $slug = preg_replace('/-+/', '-', $slug);
+        $slug = trim($slug, '-');
+
+        $db = Database::getInstance();
+        $count = $db->prepare('SELECT COUNT(*) as count FROM `' . static::getTableName() . '` WHERE slug = :slug');
+        $count->execute([':slug' => $slug]);
+        $countResult = $count->fetchColumn();
+
+        if ($countResult > 0) {
+            $slug .= '-' . time();
+        }
+
+        return $slug;
+    }
+
+    public static function findAllWithDetails(): array
+    {
+        $joins = [
+            [
+                'type' => 'LEFT',
+                'table' => 'Users',
+                'alias' => 'u',
+                'condition' => 'main.author_id = u.user_id',
+                'select' => ['u.username']
+            ],
+            [
+                'type' => 'LEFT',
+                'table' => 'Categories',
+                'alias' => 'c',
+                'condition' => 'main.category_id = c.category_id',
+                'select' => ['c.name AS category_name']
+            ]
+        ];
+
+        $articles = self::findWithDetails($joins, [], 'created_at', 'DESC');
+
+        // Добавляем теги к статьям
+        $db = Database::getInstance();
+        foreach ($articles as $article) {
+            $tagStmt = $db->prepare('
+                SELECT t.name FROM Tags t
+                JOIN Article_Tags at ON t.tag_id = at.tag_id
+                WHERE at.article_id = :article_id
+            ');
+            $tagStmt->execute([':article_id' => $article->article_id]);
+            $article->tags = $tagStmt->fetchAll(PDO::FETCH_COLUMN);
+        }
+
+        return $articles;
+    }
+
+    public static function findByIdWithDetails(int $id): ?self
+    {
+        $joins = [
+            [
+                'type' => 'LEFT',
+                'table' => 'Users',
+                'alias' => 'u',
+                'condition' => 'main.author_id = u.user_id',
+                'select' => ['u.username']
+            ],
+            [
+                'type' => 'LEFT',
+                'table' => 'Categories',
+                'alias' => 'c',
+                'condition' => 'main.category_id = c.category_id',
+                'select' => ['c.name AS category_name']
+            ]
+        ];
+
+        $conditions = ['main.article_id = ' . $id];
+        error_log("Finding article with ID: " . $id);
+        $articles = self::findWithDetails($joins, $conditions);
+
+        if (empty($articles)) {
+            error_log("No article found with ID: " . $id);
             return null;
         }
+
+        $article = $articles[0];
+        error_log("Found article: " . print_r($article, true));
+
+        // Добавляем теги
+        $db = Database::getInstance();
+        $tagStmt = $db->prepare('
+            SELECT t.name FROM Tags t
+            JOIN Article_Tags at ON t.tag_id = at.tag_id
+            WHERE at.article_id = :article_id
+        ');
+        $tagStmt->execute([':article_id' => $article->article_id]);
+        $article->tags = $tagStmt->fetchAll(PDO::FETCH_COLUMN);
+        error_log("Article tags: " . print_r($article->tags, true));
+
+        return $article;
     }
 
-    public function update($data) {
+    public function updateTags(string $tagsString): int
+    {
+        $db = Database::getInstance();
         try {
-            $this->pdo->beginTransaction();
+            $db->beginTransaction();
 
-            $sql = "UPDATE Articles 
-                    SET title = :title, 
-                        content = :content, 
-                        category_id = :category_id, 
-                        status = :status,
-                        published_at = :published_at
-                    WHERE article_id = :article_id 
-                    AND author_id = :author_id";
-            
-            $published_at = $data['status'] === 'published' ? date('Y-m-d H:i:s') : null;
-            
-            $params = [
-                ':article_id' => $data['article_id'],
-                ':title' => $data['title'],
-                ':content' => $data['content'],
-                ':category_id' => $data['category_id'],
-                ':status' => $data['status'],
-                ':published_at' => $published_at,
-                ':author_id' => $_SESSION['user_id']
-            ];
+            $deleteStmt = $db->prepare('DELETE FROM Article_Tags WHERE article_id = :article_id');
+            $deleteStmt->execute([':article_id' => $this->article_id]);
 
-            error_log("SQL: " . $sql);
-            error_log("Params: " . print_r($params, true));
-            
-            $stmt = $this->pdo->prepare($sql);
-            $result = $stmt->execute($params);
-            
-            error_log("Rows affected: " . $stmt->rowCount());
+            $tags = array_filter(array_map('trim', explode(',', $tagsString)));
+            $count = 0;
 
-            if (isset($data['tags'])) {
-                $this->deleteArticleTags($data['article_id']);
-                
-                if (!empty($data['tags'])) {
-                    $this->saveTags($data['article_id'], $data['tags']);
+            foreach ($tags as $tagName) {
+                // Проверяем, есть ли тег
+                $tagStmt = $db->prepare('SELECT tag_id FROM Tags WHERE name = :name');
+                $tagStmt->execute([':name' => $tagName]);
+                $tag = $tagStmt->fetch();
+
+                if (!$tag) {
+                    // Вставляем новый тег
+                    $slug = $this->generateSlug($tagName);
+                    $insertTagStmt = $db->prepare('INSERT INTO Tags (name, slug) VALUES (:name, :slug)');
+                    $insertTagStmt->execute([':name' => $tagName, ':slug' => $slug]);
+                    $tagId = $db->lastInsertId();
+                } else {
+                    $tagId = $tag['tag_id'];
                 }
+
+                $insertArticleTagStmt = $db->prepare('INSERT INTO Article_Tags (article_id, tag_id) VALUES (:article_id, :tag_id)');
+                $insertArticleTagStmt->execute([':article_id' => $this->article_id, ':tag_id' => $tagId]);
+                $count++;
             }
 
-            $this->pdo->commit();
-            return $result && $stmt->rowCount() > 0;
-
-        } catch (\PDOException $e) {
-            $this->pdo->rollBack();
-            error_log("Error updating article: " . $e->getMessage());
-            return false;
+            $db->commit();
+            return $count;
+        } catch (\Exception $e) {
+            $db->rollBack();
+            throw $e;
         }
     }
 
-    private function deleteArticleTags($articleId) {
-        $sql = "DELETE FROM Article_Tags WHERE article_id = ?";
-        $stmt = $this->pdo->prepare($sql);
-        return $stmt->execute([$articleId]);
-    }
-
-    private function saveTags($articleId, $tagString) {
-        $tagNames = array_map('trim', explode(',', $tagString));
-        $tagNames = array_filter($tagNames);
-
-        foreach ($tagNames as $tagName) {
-            $tagId = $this->getOrCreateTag($tagName);
-            
-            $sql = "INSERT IGNORE INTO Article_Tags (article_id, tag_id) VALUES (?, ?)";
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([$articleId, $tagId]);
-        }
-    }
-
-    private function getOrCreateTag($tagName) {
-        $sql = "SELECT tag_id FROM Tags WHERE name = ?";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$tagName]);
-        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
-
-        if ($result) {
-            return $result['tag_id'];
-        }
-
-        $sql = "INSERT INTO Tags (name, slug) VALUES (?, ?)";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$tagName, $this->createSlug($tagName)]);
+    protected function getProperties(): array
+    {
+        $properties = parent::getProperties();
         
-        return $this->pdo->lastInsertId();
+        // Удаляем поля, которые не должны сохраняться в базу данных
+        unset($properties['username']);
+        unset($properties['category_name']);
+        unset($properties['tags']);
+        
+        return $properties;
     }
 
-    private function createSlug($text) {
-        $text = mb_strtolower($text);
-        $text = preg_replace('/[^a-z0-9\-]/', '-', $text);
-        $text = preg_replace('/-+/', '-', $text);
-        return trim($text, '-');
+    // Геттеры для свойств только для чтения
+    public function getUsername(): ?string
+    {
+        return $this->username;
     }
 
-    public function delete($articleId, $userId) {
-        try {
-            $this->pdo->beginTransaction();
-
-            $sql = "SELECT article_id FROM Articles WHERE article_id = ? AND author_id = ?";
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([$articleId, $userId]);
-            
-            if (!$stmt->fetch()) {
-                $this->pdo->rollBack();
-                return false;
-            }
-
-            $sql = "DELETE FROM Article_Tags WHERE article_id = ?";
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([$articleId]);
-
-            $sql = "DELETE FROM Articles WHERE article_id = ? AND author_id = ?";
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([$articleId, $userId]);
-
-            $this->pdo->commit();
-            return $stmt->rowCount() > 0;
-
-        } catch (\PDOException $e) {
-            $this->pdo->rollBack();
-            error_log("Error deleting article: " . $e->getMessage());
-            return false;
-        }
+    public function getCategoryName(): ?string
+    {
+        return $this->category_name;
     }
-} 
+
+    public function getTags(): array
+    {
+        return $this->tags;
+    }
+}

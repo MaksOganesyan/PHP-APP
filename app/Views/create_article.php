@@ -6,8 +6,20 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 try {
-    $categoryModel = new Category();
-    $categories = $categoryModel->findAll();
+    $categories = Category::findAll();
+    if (empty($categories)) {
+        // Если категорий нет, создаем их
+        Category::createDefaultCategories();
+        $categories = Category::findAll();
+    }
+    if (empty($categories)) {
+        error_log("Categories array is empty in create_article.php");
+    } else {
+        error_log("Found " . count($categories) . " categories");
+        foreach ($categories as $category) {
+            error_log("Category: " . $category->getName() . " (ID: " . $category->getId() . ")");
+        }
+    }
 } catch (\Exception $e) {
     error_log("Error in create_article.php: " . $e->getMessage());
     $categories = [];
@@ -18,6 +30,7 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Create Article</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
@@ -25,7 +38,10 @@ try {
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="/PHP-APP/public/">Blog</a>
-            <div class="collapse navbar-collapse">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse show" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="/PHP-APP/public/article">Articles</a>
@@ -49,28 +65,26 @@ try {
                 You must be logged in to create an article. <a href="/PHP-APP/public/login">Login here</a>.
             </div>
         <?php else: ?>
-            <h1 class="mb-4">Create a New Article</h1>
-            <?php 
-            if (isset($_SESSION['errors'])): 
-                $errors = $_SESSION['errors'];
-                unset($_SESSION['errors']);
-            ?>
+            <h1 class="mb-4">Create New Article</h1>
+            <?php if (isset($_SESSION['errors'])): ?>
                 <div class="alert alert-danger">
                     <ul class="mb-0">
-                        <?php foreach ($errors as $error): ?>
+                        <?php foreach ($_SESSION['errors'] as $error): ?>
                             <li><?php echo htmlspecialchars($error); ?></li>
                         <?php endforeach; ?>
                     </ul>
                 </div>
+                <?php unset($_SESSION['errors']); ?>
             <?php endif; ?>
+
             <form method="POST" action="/PHP-APP/public/article/store" class="needs-validation" novalidate>
                 <div class="mb-3">
                     <label for="title" class="form-label">Title:</label>
-                    <input type="text" class="form-control" id="title" name="title" required>
+                    <input type="text" class="form-control" id="title" name="title" value="<?php echo isset($_POST['title']) ? htmlspecialchars($_POST['title']) : ''; ?>" required>
                 </div>
                 <div class="mb-3">
                     <label for="content" class="form-label">Content:</label>
-                    <textarea class="form-control" id="content" name="content" rows="5" required></textarea>
+                    <textarea class="form-control" id="content" name="content" rows="5" required><?php echo isset($_POST['content']) ? htmlspecialchars($_POST['content']) : ''; ?></textarea>
                 </div>
                 <div class="mb-3">
                     <label for="category_id" class="form-label">Category:</label>
@@ -80,8 +94,9 @@ try {
                             <option value="" disabled>No categories available</option>
                         <?php else: ?>
                             <?php foreach ($categories as $category): ?>
-                                <option value="<?php echo $category['category_id']; ?>">
-                                    <?php echo htmlspecialchars($category['name']); ?>
+                                <option value="<?php echo $category->getId(); ?>" 
+                                    <?php echo isset($_POST['category_id']) && $_POST['category_id'] == $category->getId() ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($category->getName()); ?>
                                 </option>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -89,13 +104,15 @@ try {
                 </div>
                 <div class="mb-3">
                     <label for="tags" class="form-label">Tags (comma-separated):</label>
-                    <input type="text" class="form-control" id="tags" name="tags" placeholder="e.g., tech, coding">
+                    <input type="text" class="form-control" id="tags" name="tags" 
+                           value="<?php echo isset($_POST['tags']) ? htmlspecialchars($_POST['tags']) : ''; ?>" 
+                           placeholder="e.g., tech, coding">
                 </div>
                 <div class="mb-3">
                     <label for="status" class="form-label">Status:</label>
                     <select class="form-select" id="status" name="status" required>
-                        <option value="draft">Draft</option>
-                        <option value="published">Published</option>
+                        <option value="draft" <?php echo isset($_POST['status']) && $_POST['status'] === 'draft' ? 'selected' : ''; ?>>Draft</option>
+                        <option value="published" <?php echo isset($_POST['status']) && $_POST['status'] === 'published' ? 'selected' : ''; ?>>Published</option>
                     </select>
                 </div>
                 <div class="mb-3">

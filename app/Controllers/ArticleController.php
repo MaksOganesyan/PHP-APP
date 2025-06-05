@@ -1,51 +1,67 @@
 <?php
 namespace app\Controllers;
 
-class ArticleController {
+use app\Models\Article;
+use app\Models\Category;
 
-    public function __construct() {
+class ArticleController
+{
+    public function __construct()
+    {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
     }
 
-    public function list() {
+    private function checkAuth(): void
+    {
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /PHP-APP/public/login');
+            exit;
+        }
+    }
+
+    private function checkArticleOwnership(Article $article): void
+    {
+        if ($article->author_id !== $_SESSION['user_id']) {
+            $_SESSION['errors'] = ['You do not have permission to edit this article'];
+            header('Location: /PHP-APP/public/article');
+            exit;
+        }
+    }
+
+    public function list()
+    {
         try {
-            $articleModel = new \app\Models\Article();
-            $articles = $articleModel->findAll();
-            
-            //! Подключение представления
+            $articles = Article::findAllWithDetails();
+            $categories = Category::findAll();
             require __DIR__ . '/../Views/list_articles.php';
         } catch (\Exception $e) {
             error_log("Error in ArticleController::list: " . $e->getMessage());
             $articles = [];
+            $categories = [];
             require __DIR__ . '/../Views/list_articles.php';
         }
     }
 
-    public function create() {
-        if (!isset($_SESSION['user_id'])) {
-            header('Location: /PHP-APP/public/login');
-            exit;
-        }
+    public function create()
+    {
+        $this->checkAuth();
+
+        $categories = Category::findAll();
         require __DIR__ . '/../Views/create_article.php';
     }
 
-    public function store() {
-        if (!isset($_SESSION['user_id'])) {
-            header('Location: /PHP-APP/public/login');
-            exit;
-        }
+    public function store()
+    {
+        $this->checkAuth();
 
-        // Проверка на тип (POST)
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Location: /PHP-APP/public/article/create');
             exit;
         }
 
-        //* Валидация данных
         $errors = [];
-        
         if (empty($_POST['title'])) {
             $errors[] = "Title is required";
         }
@@ -59,7 +75,6 @@ class ArticleController {
             $errors[] = "Status is required";
         }
 
-        //! Проверка на ошибки в таком случае вернусь на ошибку
         if (!empty($errors)) {
             $_SESSION['errors'] = $errors;
             header('Location: /PHP-APP/public/article/create');
@@ -67,97 +82,83 @@ class ArticleController {
         }
 
         try {
-            $articleModel = new \app\Models\Article();
-            
-            $articleData = [
-                'title' => $_POST['title'],
-                'content' => $_POST['content'],
-                'category_id' => $_POST['category_id'],
-                'status' => $_POST['status']
-            ];
+            $article = new Article();
+            $article->title = $_POST['title'];
+            $article->slug = $article->generateSlug($_POST['title']);
+            $article->content = $_POST['content'];
+            $article->setAuthorId($_SESSION['user_id']);
+            $article->setCategoryId((int)$_POST['category_id']);
+            $article->status = $_POST['status'];
+            $article->published_at = ($_POST['status'] === 'published') ? date('Y-m-d H:i:s') : null;
+            $article->created_at = date('Y-m-d H:i:s');
 
-            $result = $articleModel->create($articleData);
+            $article->save();
 
-            if ($result) {
-                header('Location: /PHP-APP/public/article');
-                exit();
-            } else {
-                $_SESSION['errors'] = ['Failed to create article. Please try again.'];
-                header('Location: /PHP-APP/public/article/create');
-                exit();
+            if (!empty($_POST['tags'])) {
+                $article->updateTags($_POST['tags']);
             }
+
+            header('Location: /PHP-APP/public/article');
+            exit;
         } catch (\Exception $e) {
             error_log("Error in ArticleController::store: " . $e->getMessage());
-            $_SESSION['errors'] = ['An error occurred while creating the article.'];
+            $_SESSION['errors'] = ["Error saving article: " . $e->getMessage()];
             header('Location: /PHP-APP/public/article/create');
-            exit();
+            exit;
         }
     }
 
-    public function showEditForm($id) {
-        if (!isset($_SESSION['user_id'])) {
-            header('Location: /PHP-APP/public/login');
-            exit;
-        }
+    public function showEditForm(int $id)
+    {
+        $this->checkAuth();
 
         try {
-            $articleModel = new \app\Models\Article();
-            $article = $articleModel->findById($id);
-
+            $article = Article::findByIdWithDetails($id);
             if (!$article) {
                 $_SESSION['errors'] = ['Article not found'];
                 header('Location: /PHP-APP/public/article');
                 exit;
             }
 
+            $this->checkArticleOwnership($article);
+
+            $categories = Category::findAll();
             
-            if ($article['author_id'] !== $_SESSION['user_id']) {
-                $_SESSION['errors'] = ['You are not authorized to edit this article'];
-                header('Location: /PHP-APP/public/article');
-                exit;
+            error_log("Article data in showEditForm: " . print_r($article, true));
+            error_log("Categories in showEditForm: " . print_r($categories, true));
+            
+            if (empty($categories)) {
+                error_log("Categories array is empty in showEditForm");
             }
 
             require __DIR__ . '/../Views/edit_article.php';
         } catch (\Exception $e) {
             error_log("Error in ArticleController::showEditForm: " . $e->getMessage());
-            $_SESSION['errors'] = ['An error occurred while loading the article'];
+            $_SESSION['errors'] = ["Error loading article: " . $e->getMessage()];
             header('Location: /PHP-APP/public/article');
             exit;
         }
     }
 
-    public function update($id) {
-        if (!isset($_SESSION['user_id'])) {
-            header('Location: /PHP-APP/public/login');
-            exit;
-        }
+    public function update(int $id)
+    {
+        $this->checkAuth();
 
-       
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Location: /PHP-APP/public/article');
             exit;
         }
 
         try {
-            $articleModel = new \app\Models\Article();
-            
-           
-            $article = $articleModel->findById($id);
-            error_log("Article data from DB: " . print_r($article, true));
-            
+            $article = Article::findById($id);
             if (!$article) {
                 $_SESSION['errors'] = ['Article not found'];
                 header('Location: /PHP-APP/public/article');
                 exit;
             }
 
-            if ($article['author_id'] !== $_SESSION['user_id']) {
-                $_SESSION['errors'] = ['You are not authorized to edit this article'];
-                header('Location: /PHP-APP/public/article');
-                exit;
-            }
+            $this->checkArticleOwnership($article);
 
-            
             $errors = [];
             if (empty($_POST['title'])) {
                 $errors[] = "Title is required";
@@ -174,81 +175,68 @@ class ArticleController {
 
             if (!empty($errors)) {
                 $_SESSION['errors'] = $errors;
-                header("Location: /PHP-APP/public/article/edit/{$id}");
+                header('Location: /PHP-APP/public/article/edit/' . $id);
                 exit;
             }
 
+            $article->title = $_POST['title'];
+            if ($article->title !== $_POST['title']) {
+                $article->slug = $article->generateSlug($_POST['title']);
+            }
+            $article->content = $_POST['content'];
+            $article->setCategoryId((int)$_POST['category_id']);
+            $article->status = $_POST['status'];
             
-            $articleData = [
-                'article_id' => $id,
-                'title' => $_POST['title'],
-                'content' => $_POST['content'],
-                'category_id' => $_POST['category_id'],
-                'status' => $_POST['status'],
-                'tags' => $_POST['tags']
-            ];
-
-            error_log("Update data: " . print_r($articleData, true));
-            error_log("Session user_id: " . $_SESSION['user_id']);
-
-            // Обновляю статью
-            $result = $articleModel->update($articleData);
-            error_log("Update result: " . ($result ? 'true' : 'false'));
-
-            if ($result) {
-                header('Location: /PHP-APP/public/article');
-                exit;
-            } else {
-                $_SESSION['errors'] = ['Failed to update article'];
-                header("Location: /PHP-APP/public/article/edit/{$id}");
-                exit;
+            if ($article->status === 'published' && !$article->published_at) {
+                $article->published_at = date('Y-m-d H:i:s');
             }
+
+            $article->save();
+
+            if (isset($_POST['tags'])) {
+                $article->updateTags($_POST['tags']);
+            }
+
+            $_SESSION['success'] = 'Article updated successfully';
+            header('Location: /PHP-APP/public/article');
+            exit;
         } catch (\Exception $e) {
             error_log("Error in ArticleController::update: " . $e->getMessage());
-            $_SESSION['errors'] = ['An error occurred while updating the article'];
-            header("Location: /PHP-APP/public/article/edit/{$id}");
+            $_SESSION['errors'] = ["Error updating article: " . $e->getMessage()];
+            header('Location: /PHP-APP/public/article/edit/' . $id);
             exit;
         }
     }
 
-    public function delete($id) {
-        if (!isset($_SESSION['user_id'])) {
-            header('Location: /PHP-APP/public/login');
+    public function delete(int $id)
+    {
+        $this->checkAuth();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: /PHP-APP/public/article');
             exit;
         }
 
         try {
-            $articleModel = new \app\Models\Article();
-            
-            // Проверка существования статьи и права доступа
-            $article = $articleModel->findById($id);
-            
+            $article = Article::findById($id);
             if (!$article) {
                 $_SESSION['errors'] = ['Article not found'];
                 header('Location: /PHP-APP/public/article');
                 exit;
             }
 
-            if ($article['author_id'] !== $_SESSION['user_id']) {
-                $_SESSION['errors'] = ['You are not authorized to delete this article'];
-                header('Location: /PHP-APP/public/article');
-                exit;
-            }
+            $this->checkArticleOwnership($article);
 
-            
-            if ($articleModel->delete($id, $_SESSION['user_id'])) {
-                $_SESSION['success'] = 'Article successfully deleted';
-            } else {
-                $_SESSION['errors'] = ['Failed to delete article'];
-            }
+            $article->delete();
 
+            $_SESSION['success'] = 'Article deleted successfully';
+            header('Location: /PHP-APP/public/article');
+            exit;
         } catch (\Exception $e) {
             error_log("Error in ArticleController::delete: " . $e->getMessage());
-            $_SESSION['errors'] = ['An error occurred while deleting the article'];
+            $_SESSION['errors'] = ["Error deleting article: " . $e->getMessage()];
+            header('Location: /PHP-APP/public/article');
+            exit;
         }
-
-        header('Location: /PHP-APP/public/article');
-        exit;
     }
 }
-?>

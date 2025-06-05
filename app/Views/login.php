@@ -30,6 +30,15 @@
                     <div class="card-body p-5">
                         <h1 class="h3 mb-4 text-center">Login</h1>
 
+                        <?php if (isset($_SESSION['success'])): ?>
+                            <div class="alert alert-success">
+                                <?php 
+                                echo htmlspecialchars($_SESSION['success']);
+                                unset($_SESSION['success']);
+                                ?>
+                            </div>
+                        <?php endif; ?>
+
                         <?php if (isset($_SESSION['errors'])): ?>
                             <div class="alert alert-danger">
                                 <?php 

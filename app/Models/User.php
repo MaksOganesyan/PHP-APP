@@ -1,68 +1,54 @@
 <?php
+
 namespace app\Models;
-use app\Config\Database;
 
-class User {
-    private $pdo;
+class User extends ActiveRecordEntity
+{
+    protected $user_id;
+    public $username;
+    public $email;
+    protected $password_hash;
+    public $role;
+    public $created_at;
 
-    public function __construct() {
-        $this->pdo = Database::getInstance();
+    protected static function getTableName(): string
+    {
+        return 'Users';
     }
 
-    public function create($username, $email, $password, $role = 'author') {
-        if ($this->findByEmail($email)) {
-            return false;
-        }
-
-        $stmt = $this->pdo->prepare("INSERT INTO Users (username, email, password_hash, role) VALUES (?, ?, ?, ?)");
-        $passwordHash = password_hash($password, PASSWORD_BCRYPT);
-
-        $success = $stmt->execute([$username, $email, $passwordHash, $role]);
-        if (!$success) {
-            error_log("Create failed. Error: " . implode(", ", $stmt->errorInfo()));
-        }
-        return $success;
+    public function getId(): int
+    {
+        return $this->user_id;
     }
 
-    public function findByEmail($email) {
-        $stmt = $this->pdo->prepare("SELECT * FROM Users WHERE email = ?");
-        $stmt->execute([$email]);
-        $user = $stmt->fetch(\PDO::FETCH_ASSOC);
-
-        if (!$user) {
-            error_log("No user found for email: $email");
-        }
+    public static function createUser(string $username, string $email, string $password): self
+    {
+        $user = new self();
+        $user->username = $username;
+        $user->email = $email;
+        $user->password_hash = password_hash($password, PASSWORD_BCRYPT);
+        $user->role = 'author';
+        $user->save();
         return $user;
     }
 
-    public function findById($id) {
-        $stmt = $this->pdo->prepare("SELECT * FROM Users WHERE user_id = ?");
-        $stmt->execute([$id]);
-        return $stmt->fetch(\PDO::FETCH_ASSOC);
+    public static function findByEmail(string $email): ?self
+    {
+        return self::findOneBy('email', $email);
     }
 
-    public function verifyPassword($email, $password) {
-        try {
-            $stmt = $this->pdo->prepare("SELECT * FROM Users WHERE email = ?");
-            $stmt->execute([$email]);
-            $user = $stmt->fetch(\PDO::FETCH_ASSOC);
+    public function verifyPassword(string $password): bool
+    {
+        return password_verify($password, $this->password_hash);
+    }
 
-            if (!$user) {
-                error_log("Login attempt: No user found for email: $email");
-                return false;
-            }
+    public function getUsername(): string
+    {
+        return $this->username;
+    }
 
-            if (password_verify($password, $user['password_hash'])) {
-                error_log("Login successful for user: " . $user['username']);
-                return $user;
-            }
-
-            error_log("Login attempt: Invalid password for email: $email");
-            return false;
-        } catch (\PDOException $e) {
-            error_log("Database error during login: " . $e->getMessage());
-            return false;
-        }
+    public function getRole(): string
+    {
+        return $this->role;
     }
 }
-?>

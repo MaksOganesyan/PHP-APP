@@ -1,38 +1,92 @@
 <?php
+
 namespace app\Models;
+
 use app\Config\Database;
 
-class Category {
-    private $pdo;
+class Category extends ActiveRecordEntity
+{
+    protected $category_id;
+    public $name;
+    public $slug;
+    public $created_at;
 
-    public function __construct() {
+    protected static function getTableName(): string
+    {
+        return 'Categories';
+    }
+
+    public function getId(): int
+    {
+        return $this->category_id;
+    }
+
+    public function getName(): string
+    {
+        return $this->name ?? '';
+    }
+
+    public function getSlug(): string
+    {
+        return $this->slug ?? '';
+    }
+
+    public static function findAll(string $orderBy = null, string $direction = 'ASC'): array
+    {
         try {
-            $this->pdo = Database::getInstance();
+            $sql = 'SELECT * FROM `' . static::getTableName() . '`';
+            if ($orderBy !== null) {
+                $sql .= ' ORDER BY `' . $orderBy . '` ' . $direction;
+            }
+
+            error_log("Category findAll SQL: " . $sql);
+            
+            $stmt = Database::getInstance()->query($sql);
+            $results = $stmt->fetchAll();
+            
+            error_log("Category findAll raw results: " . print_r($results, true));
+            
+            $categories = static::createEntitiesFromRows($results);
+            
+            error_log("Category objects created: " . count($categories));
+            foreach ($categories as $category) {
+                error_log("Category: " . print_r($category, true));
+            }
+            
+            return $categories;
         } catch (\Exception $e) {
-            error_log("Database connection error: " . $e->getMessage());
-            throw new \Exception("Could not connect to database");
+            error_log("Error in Category::findAll: " . $e->getMessage());
+            throw $e;
         }
     }
 
-    public function findAll() {
+    public static function createDefaultCategories(): void
+    {
         try {
-            $stmt = $this->pdo->query("SELECT * FROM Categories ORDER BY name ASC");
-            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-        } catch (\PDOException $e) {
-            error_log("Error fetching categories: " . $e->getMessage());
-            return [];
-        }
-    }
+            $defaultCategories = [
+                ['name' => 'General', 'slug' => 'general'],
+                ['name' => 'Technology', 'slug' => 'technology'],
+                ['name' => 'Programming', 'slug' => 'programming'],
+                ['name' => 'Lifestyle', 'slug' => 'lifestyle'],
+                ['name' => 'Travel', 'slug' => 'travel']
+            ];
 
-    public function findById($id) {
-        try {
-            $stmt = $this->pdo->prepare("SELECT * FROM Categories WHERE category_id = ?");
-            $stmt->execute([$id]);
-            return $stmt->fetch(\PDO::FETCH_ASSOC);
-        } catch (\PDOException $e) {
-            error_log("Error fetching category by ID: " . $e->getMessage());
-            return null;
+            foreach ($defaultCategories as $categoryData) {
+                $category = new self();
+                $category->name = $categoryData['name'];
+                $category->slug = $categoryData['slug'];
+                $category->created_at = date('Y-m-d H:i:s');
+                try {
+                    $category->save();
+                    error_log("Created category: " . $categoryData['name']);
+                } catch (\Exception $e) {
+                    error_log("Error creating category {$categoryData['name']}: " . $e->getMessage());
+                    continue;
+                }
+            }
+        } catch (\Exception $e) {
+            error_log("Error in createDefaultCategories: " . $e->getMessage());
+            throw $e;
         }
     }
 }
-?>
